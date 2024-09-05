@@ -14,6 +14,12 @@ func main() {
 
 	defer syscall.Close(socket)
 
+	// allows the program to reuse a port that is in TIME_WAIT state
+	reuseErr := syscall.SetsockoptInt(socket, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+	if reuseErr != nil {
+		log.Fatalln("Error setting SO_REUSEADDR:", reuseErr)
+	}
+
 	sockAddr := syscall.SockaddrInet4{Port: 8080}
 	copy(sockAddr.Addr[:], []byte{127, 0, 0, 1})
 
@@ -54,11 +60,15 @@ func handleConn(handle int) {
 
 		fmt.Println(string(buffer[:n]))
 
+		message := "{some:\"Hello, world!\"}"
+
+		length := len(message)
+
 		response := "HTTP/1.1 200 OK\r\n" +
-			"Content-Type: text/plain\r\n" +
-			"Content-Length: 13\r\n" +
+			"Content-Type: application/json\r\n" +
+			"Content-Length: " + string(length) + "\r\n" +
 			"\r\n" +
-			"Hello, world!"
+			message
 
 		_, err := syscall.Write(handle, []byte(response))
 		if err != nil {
